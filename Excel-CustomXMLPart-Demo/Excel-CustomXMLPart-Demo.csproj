@@ -48,6 +48,7 @@
     <Content Include="Excel-CustomXMLPart-DemoManifest\Excel-CustomXMLPart-Demo.xml">
       <OpcRelationship>manifest-oemanifest</OpcRelationship>
     </Content>
+    <None Include="TestBook.xlsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Excel-CustomXMLPart-DemoWeb\Excel-CustomXMLPart-DemoWeb.csproj">

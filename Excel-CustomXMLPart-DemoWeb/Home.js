@@ -5,6 +5,17 @@
 
     var cellToHighlight;
     var messageBanner;
+    var myControls = [];
+
+    function controlDataObj() {
+        this.Name = "";
+        this.RangeAddress = "";
+        this.WorksheetName = "";
+        this.ID = "";
+        this.Width = 12;
+        this.Left = 0;
+        this.ControlType = "";
+    };
 
     // The initialize function must be run each time a new page is loaded.
     Office.initialize = function (reason) {
@@ -13,7 +24,7 @@
             var element = document.querySelector('.ms-MessageBanner');
             messageBanner = new fabric.MessageBanner(element);
             messageBanner.hideBanner();
-            
+
             // If not using Excel 2016, use fallback logic.
             if (!Office.context.requirements.isSetSupported('ExcelApi', '1.1')) {
                 $("#template-description").text("This sample will display the value of the cells that you have selected in the spreadsheet.");
@@ -24,83 +35,262 @@
                 return;
             }
 
-            $("#template-description").text("This sample highlights the highest value from the cells you have selected in the spreadsheet.");
-            $('#button-text').text("Highlight!");
-            $('#button-desc').text("Highlights the largest number.");
-                
-            loadSampleData();
+            $('#getxml-button-text').text("Get XML");
+            $('#getxml-button-desc').text("Gets custom XML parts stored in this workbook");
+            $('#getxml-button').click(getXML);
 
-            // Add a click event handler for the highlight button.
-            $('#highlight-button').click(hightlightHighestValue);
+            $('#hydrate-button-text').text("Load Controls");
+            $('#hydrate-button-desc').text("Loads control data into this workbook");
+            $('#hydrate-button').click(hydrateWorkbook);
+
+            $('#serialize-button-text').text("Serialize Data");
+            $('#serialize-button-desc').text("Serialize the controal data into XML");
+            $('#serialize-button').click(serializeData);
         });
     }
 
-    function loadSampleData() {
-        var values = [
-            [Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000)],
-            [Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000)],
-            [Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000), Math.floor(Math.random() * 1000)]
-        ];
-
-        // Run a batch operation against the Excel object model
+    function getXML() {
         Excel.run(function (ctx) {
-            // Create a proxy object for the active sheet
-            var sheet = ctx.workbook.worksheets.getActiveWorksheet();
-            // Queue a command to write the sample data to the worksheet
-            sheet.getRange("B3:D5").values = values;
 
-            // Run the queued-up commands, and return a promise to indicate task completion
-            return ctx.sync();
-        })
-        .catch(errorHandler);
-    }
+            var xmlpart = ctx.workbook.customXmlParts.getByNamespace("CommonTools").getOnlyItem();
+            xmlpart.load();
 
-    function hightlightHighestValue() {
-        // Run a batch operation against the Excel object model
-        Excel.run(function (ctx) {
-            // Create a proxy object for the selected range and load its properties
-            var sourceRange = ctx.workbook.getSelectedRange().load("values, rowCount, columnCount");
+            return ctx.sync().then(function () {
 
-            // Run the queued-up command, and return a promise to indicate task completion
-            return ctx.sync()
-                .then(function () {
-                    var highestRow = 0;
-                    var highestCol = 0;
-                    var highestValue = sourceRange.values[0][0];
+                var xmlData = xmlpart.getXml();
+                return ctx.sync().then(function () {
 
-                    // Find the cell to highlight
-                    for (var i = 0; i < sourceRange.rowCount; i++) {
-                        for (var j = 0; j < sourceRange.columnCount; j++) {
-                            if (!isNaN(sourceRange.values[i][j]) && sourceRange.values[i][j] > highestValue) {
-                                highestRow = i;
-                                highestCol = j;
-                                highestValue = sourceRange.values[i][j];
+                    var doc = $.parseXML(xmlData.value);
+                    var $items = $(doc).find("item");
+
+                    $items.each(function () {
+                        var controlData = new controlDataObj();
+                        var props = this.childNodes;
+                        $(props).each(function () {
+                            var tmp = this.tagName;
+                            switch (tmp) {
+                                case "Name":
+                                    controlData.Name = this.textContent;
+                                    break;
+
+                                case "RangeAddress":
+                                    controlData.RangeAddress = this.textContent;
+                                    break;
+
+                                case "WorksheetName":
+                                    controlData.WorksheetName = this.textContent;
+                                    break;
+
+                                case "ID":
+                                    controlData.ID = this.textContent;
+                                    break;
+
+                                case "ControlType":
+                                    controlData.ControlType = this.textContent;
+                                    break;
                             }
-                        }
-                    }
+                        })
+                        myControls.push(controlData);
+                    })
 
-                    cellToHighlight = sourceRange.getCell(highestRow, highestCol);
-                    sourceRange.worksheet.getUsedRange().format.fill.clear();
-                    sourceRange.worksheet.getUsedRange().format.font.bold = false;
+                    showNotification('Info', 'Completed.  Controls Found: ' + myControls.length);
 
-                    // Highlight the cell
-                    cellToHighlight.format.fill.color = "orange";
-                    cellToHighlight.format.font.bold = true;
                 })
-                .then(ctx.sync);
-        })
-        .catch(errorHandler);
+
+            });
+        }).catch(function (error) { //...
+        });
+
     }
 
-    function displaySelectedCells() {
-        Office.context.document.getSelectedDataAsync(Office.CoercionType.Text,
-            function (result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    showNotification('The selected text is:', '"' + result.value + '"');
-                } else {
-                    showNotification('Error', result.error.message);
+    function hydrateWorkbook() {
+
+        Excel.run(function (ctx) {
+
+            myControls.forEach(function (value, index) {
+                var item = new controlDataObj();
+                item = value;
+
+                var worksheet = ctx.workbook.worksheets.getItem(item.WorksheetName);
+                var range = worksheet.getRange(item.RangeAddress);
+
+                range.format.borders.getItem('EdgeBottom').style = 'Continuous';
+                range.format.borders.getItem('EdgeLeft').style = 'Continuous';
+                range.format.borders.getItem('EdgeRight').style = 'Continuous';
+                range.format.borders.getItem('EdgeTop').style = 'Continuous';
+
+                range.format.borders.getItem('EdgeBottom').color = item.ControlType;
+                range.format.borders.getItem('EdgeLeft').color = item.ControlType;
+                range.format.borders.getItem('EdgeRight').color = item.ControlType;
+                range.format.borders.getItem('EdgeTop').color = item.ControlType;
+
+                range.format.borders.getItem('EdgeBottom').weight = 'Medium';
+                range.format.borders.getItem('EdgeLeft').weight = 'Medium';
+                range.format.borders.getItem('EdgeRight').weight = 'Medium';
+                range.format.borders.getItem('EdgeTop').weight = 'Medium';
+
+                switch (item.ControlType) {
+                    case "green":
+                        range.format.fill.color = 'C6EFCE';
+                        break;
+                    case "yellow":
+                        range.format.fill.color = 'FFEB9C';
+                        break;
+                    case "red":
+                        range.format.fill.color = 'FFC7CE';
+                        break;
+                }
+
+                var binding = ctx.workbook.bindings.add(range, 'Range', item.ID);
+
+            });
+
+            var bindings = ctx.workbook.bindings;
+            bindings.load('items');
+
+            return ctx.sync().then(function () {
+
+                for (var i = 0; i < bindings.items.length; i++) {
+
+                    var bindingid = bindings.items[i].id;
+                    Office.select('bindings#' + bindingid).addHandlerAsync(Office.EventType.BindingSelectionChanged, onBindingSelectionChanged);
+
                 }
             });
+
+        }).catch(function (error) { //...
+        });
+    }
+
+    function onBindingSelectionChanged(bArgs) {
+
+        showNotification('Info', 'Binding selected: ' + bArgs.binding.id);
+        //TODO: Flesh this out to add content to task pane
+
+    }
+
+    function serializeData() {
+
+        var xmlData = '<?xml version="1.0"?><CommonToolsData xmlns="CommonTools">';
+
+        Excel.run(function (ctx) {
+
+            var bindings = ctx.workbook.bindings;
+            bindings.load('items');
+
+            return ctx.sync().then(function () {
+
+                var ranges = [];
+                var controls = [];
+
+                for (var i = 0; i < bindings.items.length; i++) {
+
+                    var controlData = new controlDataObj();
+                    var binding = bindings.items[i];
+
+                    controlData.ID = binding.id;
+                    var range = binding.getRange();
+                    range.load(["address", "format/*", "format/fill"]);
+
+                    ranges.push(range);
+                    controls.push(controlData);
+
+                }
+                return ctx.sync().then(function () {
+
+                    for (var i = 0; i < ranges.length; i++) {
+
+                        controls[i].RangeAddress = ranges[i].address.split("!")[1];
+                        controls[i].WorksheetName = ranges[i].address.split("!")[0];
+
+                        var format = ranges[i].format.fill.color;
+
+                        switch (format) {
+                            case "#C6EFCE":
+                                controls[i].ControlType = 'green';
+                                break;
+                            case "#FFEB9C":
+                                controls[i].ControlType = 'yellow';
+                                break;
+                            case "#FFC7CE":
+                                controls[i].ControlType = 'red';
+                                break;
+                        }
+
+                        xmlData += '<item>';
+                        xmlData += '<RangeStart/>';
+                        xmlData += '<RangeEnd/>';
+                        xmlData += '<Name/>';
+                        xmlData += '<Width/>';
+                        xmlData += '<Left/>';
+                        xmlData += '<ID>' + controls[i].ID + '</ID>';
+                        xmlData += '<WorksheetName>' + controls[i].WorksheetName + '</WorksheetName>';
+                        xmlData += '<ControlType>' + controls[i].ControlType + '</ControlType>';
+                        xmlData += '<RangeAddress>' + controls[i].RangeAddress + '</RangeAddress>';
+                        xmlData += '</item>';
+
+                    }
+
+                    xmlData += '</CommonToolsData>';
+
+                    var xmlpart = ctx.workbook.customXmlParts.getByNamespace("CommonTools").getOnlyItem();
+                    xmlpart.load();
+
+                    return ctx.sync().then(function () {
+                        xmlpart.setXml(xmlData);
+                        xmlpart.load();
+                        ctx.sync();
+
+                        clearWorkbook();
+
+                        //Should we remove bindings at this point too?
+                    });
+                });
+            });
+
+        }).catch(function (error) { //...
+        });
+
+    }
+
+    function clearWorkbook() {
+
+        Excel.run(function (ctx) {
+
+            var bindings = ctx.workbook.bindings;
+            bindings.load('items');
+
+            return ctx.sync().then(function () {
+
+                var ranges = [];
+
+                for (var i = 0; i < bindings.items.length; i++) {
+
+                    var binding = bindings.items[i];
+                    var range = binding.getRange();
+                    range.load(["address", "format/*", "format/fill", "format/borders"]);
+
+                    ranges.push(range);
+                }
+                return ctx.sync().then(function () {
+
+                    for (var i = 0; i < ranges.length; i++) {
+
+                        ranges[i].format.fill.clear();
+                        // ranges[i].format.borders.clear();
+
+                        ranges[i].format.borders.getItem('EdgeBottom').style = 'None';
+                        ranges[i].format.borders.getItem('EdgeLeft').style = 'None';
+                        ranges[i].format.borders.getItem('EdgeRight').style = 'None';
+                        ranges[i].format.borders.getItem('EdgeTop').style = 'None';
+
+                    }
+
+                    ctx.sync();
+                });
+            })
+        }).catch(function (error) { //...
+        });
     }
 
     // Helper function for treating errors
