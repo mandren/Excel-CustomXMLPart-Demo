@@ -141,7 +141,7 @@
                         break;
                 }
 
-                var binding = ctx.workbook.bindings.add(range, 'Range', item.ID);
+                var binding = ctx.workbook.bindings.add(range, 'Range', item.ControlType + '!' + item.ID);
 
             });
 
@@ -188,9 +188,10 @@
                     var controlData = new controlDataObj();
                     var binding = bindings.items[i];
 
-                    controlData.ID = binding.id;
+                    controlData.ID = binding.id.split("!")[1];
+                    controlData.ControlType = binding.id.split("!")[0];
                     var range = binding.getRange();
-                    range.load(["address", "format/*", "format/fill"]);
+                    range.load("address");
 
                     ranges.push(range);
                     controls.push(controlData);
@@ -202,21 +203,7 @@
 
                         controls[i].RangeAddress = ranges[i].address.split("!")[1];
                         controls[i].WorksheetName = ranges[i].address.split("!")[0];
-
-                        var format = ranges[i].format.fill.color;
-
-                        switch (format) {
-                            case "#C6EFCE":
-                                controls[i].ControlType = 'green';
-                                break;
-                            case "#FFEB9C":
-                                controls[i].ControlType = 'yellow';
-                                break;
-                            case "#FFC7CE":
-                                controls[i].ControlType = 'red';
-                                break;
-                        }
-
+                        
                         xmlData += '<item>';
                         xmlData += '<RangeStart/>';
                         xmlData += '<RangeEnd/>';
