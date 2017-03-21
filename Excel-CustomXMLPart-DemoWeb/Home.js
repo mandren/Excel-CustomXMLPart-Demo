@@ -44,13 +44,20 @@
             $('#hydrate-button').click(hydrateWorkbook);
 
             $('#serialize-button-text').text("Serialize Data");
-            $('#serialize-button-desc').text("Serialize the controal data into XML");
+            $('#serialize-button-desc').text("Serialize the control data into XML");
             $('#serialize-button').click(serializeData);
+
+            $('#add-control-button-text').text("Add Control");
+            $('#add-control-button-desc').text("Add new control to the workbook");
+            $('#add-control-button').click(addControl);
+
         });
     }
 
     function getXML() {
         Excel.run(function (ctx) {
+
+            myControls.length = 0;
 
             var xmlpart = ctx.workbook.customXmlParts.getByNamespace("CommonTools").getOnlyItem();
             xmlpart.load();
@@ -114,32 +121,7 @@
                 var worksheet = ctx.workbook.worksheets.getItem(item.WorksheetName);
                 var range = worksheet.getRange(item.RangeAddress);
 
-                range.format.borders.getItem('EdgeBottom').style = 'Continuous';
-                range.format.borders.getItem('EdgeLeft').style = 'Continuous';
-                range.format.borders.getItem('EdgeRight').style = 'Continuous';
-                range.format.borders.getItem('EdgeTop').style = 'Continuous';
-
-                range.format.borders.getItem('EdgeBottom').color = item.ControlType;
-                range.format.borders.getItem('EdgeLeft').color = item.ControlType;
-                range.format.borders.getItem('EdgeRight').color = item.ControlType;
-                range.format.borders.getItem('EdgeTop').color = item.ControlType;
-
-                range.format.borders.getItem('EdgeBottom').weight = 'Medium';
-                range.format.borders.getItem('EdgeLeft').weight = 'Medium';
-                range.format.borders.getItem('EdgeRight').weight = 'Medium';
-                range.format.borders.getItem('EdgeTop').weight = 'Medium';
-
-                switch (item.ControlType) {
-                    case "green":
-                        range.format.fill.color = 'C6EFCE';
-                        break;
-                    case "yellow":
-                        range.format.fill.color = 'FFEB9C';
-                        break;
-                    case "red":
-                        range.format.fill.color = 'FFC7CE';
-                        break;
-                }
+                setRangeFormat(range, item.ControlType);
 
                 var binding = ctx.workbook.bindings.add(range, 'Range', item.ControlType + '!' + item.ID);
 
@@ -278,6 +260,66 @@
             })
         }).catch(function (error) { //...
         });
+    }
+
+    function addControl() {
+
+        Excel.run(function (ctx) {
+            
+            var controlType = $("#controlType-list option:selected").text();
+            var guid = generateQuickGuid();
+
+            var range = ctx.workbook.getSelectedRange();
+
+            setRangeFormat(range, controlType);
+
+            var bindingId = controlType + '!' + guid;
+            var binding = ctx.workbook.bindings.add(range, 'Range', bindingId);
+            
+            return ctx.sync().then(function () {
+
+                Office.select('bindings#' + bindingId).addHandlerAsync(Office.EventType.BindingSelectionChanged, onBindingSelectionChanged);
+
+            });
+
+        }).catch(function (error) { //...
+        });
+
+    }
+    
+    function generateQuickGuid() {
+        return Math.random().toString(36).substring(2, 15) +
+            Math.random().toString(36).substring(2, 15);
+    }
+
+    function setRangeFormat(range, controlType) {
+
+        range.format.borders.getItem('EdgeBottom').style = 'Continuous';
+        range.format.borders.getItem('EdgeLeft').style = 'Continuous';
+        range.format.borders.getItem('EdgeRight').style = 'Continuous';
+        range.format.borders.getItem('EdgeTop').style = 'Continuous';
+
+        range.format.borders.getItem('EdgeBottom').color = controlType;
+        range.format.borders.getItem('EdgeLeft').color = controlType;
+        range.format.borders.getItem('EdgeRight').color = controlType;
+        range.format.borders.getItem('EdgeTop').color = controlType;
+
+        range.format.borders.getItem('EdgeBottom').weight = 'Medium';
+        range.format.borders.getItem('EdgeLeft').weight = 'Medium';
+        range.format.borders.getItem('EdgeRight').weight = 'Medium';
+        range.format.borders.getItem('EdgeTop').weight = 'Medium';
+
+        switch (controlType) {
+            case "green":
+                range.format.fill.color = 'C6EFCE';
+                break;
+            case "yellow":
+                range.format.fill.color = 'FFEB9C';
+                break;
+            case "red":
+                range.format.fill.color = 'FFC7CE';
+                break;
+        }
     }
 
     // Helper function for treating errors

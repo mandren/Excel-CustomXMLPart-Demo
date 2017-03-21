@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <title>Excel Add-In with Commands Sample</title>
-
+    
     <script src="Scripts/jquery-1.9.1.js" type="text/javascript"></script>
     <script src="Scripts/FabricUI/MessageBanner.js" type="text/javascript"></script>
     <script src="https://appsforoffice.edog.officeapps.live.com/lib/beta/hosted/office.js" type="text/javascript"></script>
@@ -28,13 +28,15 @@
     <div id="content-main">
         <div class="padding">
             <br />
+           
+            <!-- Boilerplate from addin template in VS
             <div class="ms-font-xxl ms-fontColor-neutralSecondary ms-fontWeight-semilight">Sample</div>
             <br /><br />
             <div class="ms-font-xl ms-fontColor-neutralTertiary">Getting Started</div>
             <p class="ms-font-m-plus ms-fontColor-neutralTertiary" id="template-description"></p>
             <div class="ms-font-m"><a target="_blank" class="ms-Link ms-Link--hero" href="https://go.microsoft.com/fwlink/?LinkId=276812">Find more samples online...</a></div>
             <br /><br />
-
+            -->
 
             <button class="ms-Button ms-Button--primary" id="getxml-button">
                 <span class="ms-Button-icon"><i class="ms-Icon ms-Icon--plus"></i></span>
@@ -57,12 +59,27 @@
             </button>
             <br /><br />
 
+            <button class="ms-Button ms-Button--primary" id="add-control-button">
+                <span class="ms-Button-icon"><i class="ms-Icon ms-Icon--plus"></i></span>
+                <span class="ms-Button-label" id="add-control-button-text"></span>
+                <span class="ms-Button-description" id="add-control-button-desc"></span>
+            </button>
+            <div tabindex="0">
+                <label class="ms-Label">Control Type:</label>
+                <i class="ms-Dropdown-caretDown ms-Icon ms-Icon--ChevronDown"></i>
+                <select id="controlType-list" class="ms-Dropdown">
+                    <option value="green" class="ms-Dropdown-item">green</option>
+                    <option value="yellow" class="ms-Dropdown-item">yellow</option>
+                    <option value="red" class="ms-Dropdown-item">red</option>
+                </select>
+            </div>
+
         </div>
     </div>
     <div class="footer">
         <div class="ms-Grid ms-bgColor-themeSecondary">
             <div class="ms-Grid-row">
-                <div class="ms-Grid-col ms-u-sm12 ms-u-md12 ms-u-lg12"> <div class="ms-font-xl ms-fontColor-white">Contoso</div></div>
+                <!--<div class="ms-Grid-col ms-u-sm12 ms-u-md12 ms-u-lg12"> <div class="ms-font-xl ms-fontColor-white">Contoso</div></div>-->
             </div>
         </div>
     </div>
