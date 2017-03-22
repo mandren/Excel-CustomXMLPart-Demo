@@ -51,8 +51,30 @@
             $('#add-control-button-desc').text("Add new control to the workbook");
             $('#add-control-button').click(addControl);
 
+            initializeWB();
         });
     }
+
+    function initializeWB() {
+
+        Excel.run(function (ctx) {
+
+            var sheetName = "Sheet1";
+            var rangeAddress = "A:Z";
+            var range = ctx.workbook.worksheets.getItem(sheetName).getRange(rangeAddress);
+           
+            var binding = ctx.workbook.bindings.add(range, 'Range', 'SheetBinding');
+
+            return ctx.sync().then(function () {
+
+                Office.select('bindings#SheetBinding').addHandlerAsync(Office.EventType.BindingSelectionChanged, onSheetBindingSelectionChanged);
+                
+            });
+
+        }).catch(function (error) { //...
+        });
+    }
+
 
     function getXML() {
         Excel.run(function (ctx) {
@@ -134,9 +156,11 @@
 
                 for (var i = 0; i < bindings.items.length; i++) {
 
-                    var bindingid = bindings.items[i].id;
-                    Office.select('bindings#' + bindingid).addHandlerAsync(Office.EventType.BindingSelectionChanged, onBindingSelectionChanged);
-
+                    if (bindings.items[i].id != "SheetBinding") {
+                        var bindingid = bindings.items[i].id;
+                        Office.select('bindings#' + bindingid).addHandlerAsync(Office.EventType.BindingSelectionChanged, onBindingSelectionChanged);
+                    }
+                    
                 }
             });
 
@@ -156,6 +180,13 @@
 
     }
 
+    function onSheetBindingSelectionChanged(bArgs) {
+
+        $("#controlType-list").val('green');
+        $("#binding-label").html('Empty Cell');
+
+    }
+
     function serializeData() {
 
         var xmlData = '<?xml version="1.0"?><CommonToolsData xmlns="CommonTools">';
@@ -172,17 +203,19 @@
 
                 for (var i = 0; i < bindings.items.length; i++) {
 
-                    var controlData = new controlDataObj();
-                    var binding = bindings.items[i];
+                    if (bindings.items[i].id != "SheetBinding") {
+                        var controlData = new controlDataObj();
+                        var binding = bindings.items[i];
 
-                    controlData.ID = binding.id.split("!")[1];
-                    controlData.ControlType = binding.id.split("!")[0];
-                    var range = binding.getRange();
-                    range.load("address");
+                        controlData.ID = binding.id.split("!")[1];
+                        controlData.ControlType = binding.id.split("!")[0];
+                        var range = binding.getRange();
+                        range.load("address");
 
-                    ranges.push(range);
-                    controls.push(controlData);
-
+                        ranges.push(range);
+                        controls.push(controlData);
+                    } 
+                    
                 }
                 return ctx.sync().then(function () {
 
@@ -214,11 +247,12 @@
 
                         xmlpart.setXml(xmlData);
                         xmlpart.load();
-                        ctx.sync();
+                        return ctx.sync().then(function () {
 
-                        clearWorkbook();  
-                       // removeBindings();
+                            clearWorkbook();
+                            //removeBindings();
 
+                        });
                     });
                 });
             });
@@ -241,10 +275,12 @@
 
                 for (var i = 0; i < bindings.items.length; i++) {
 
-                    var range = bindings.items[i].getRange();
-                    range.load(["address", "format/*", "format/fill", "format/borders"]);
-                    ranges.push(range);
-                   
+                    if (bindings.items[i].id != "SheetBinding") {
+
+                        var range = bindings.items[i].getRange();
+                        range.load(["format/*", "format/fill", "format/borders"]);
+                        ranges.push(range);
+                    }
                 }
                 return ctx.sync().then(function () {
 
@@ -259,7 +295,7 @@
 
                     }
 
-                    ctx.sync();
+                    return ctx.sync();
                 });
             })
         }).catch(function (error) { //...
