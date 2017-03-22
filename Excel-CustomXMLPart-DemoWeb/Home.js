@@ -39,7 +39,7 @@
             $('#getxml-button-desc').text("Gets custom XML parts stored in this workbook");
             $('#getxml-button').click(getXML);
 
-            $('#hydrate-button-text').text("Load Controls");
+            $('#hydrate-button-text').text("Load Workbook");
             $('#hydrate-button-desc').text("Loads control data into this workbook");
             $('#hydrate-button').click(hydrateWorkbook);
 
@@ -146,8 +146,13 @@
 
     function onBindingSelectionChanged(bArgs) {
 
-        showNotification('Info', 'Binding selected: ' + bArgs.binding.id);
-        //TODO: Flesh this out to add content to task pane
+        var id = bArgs.binding.id.split("!")[1];
+        var controlType = bArgs.binding.id.split("!")[0];
+                
+        $("#controlType-list").val(controlType);
+        $("#binding-label").html('BindingID: ' + id);
+
+         //TODO: Flesh this out to add content to task pane
 
     }
 
@@ -206,13 +211,14 @@
                     xmlpart.load();
 
                     return ctx.sync().then(function () {
+
                         xmlpart.setXml(xmlData);
                         xmlpart.load();
                         ctx.sync();
 
-                        clearWorkbook();
+                        clearWorkbook();  
+                       // removeBindings();
 
-                        //Should we remove bindings at this point too?
                     });
                 });
             });
@@ -235,19 +241,17 @@
 
                 for (var i = 0; i < bindings.items.length; i++) {
 
-                    var binding = bindings.items[i];
-                    var range = binding.getRange();
+                    var range = bindings.items[i].getRange();
                     range.load(["address", "format/*", "format/fill", "format/borders"]);
-
                     ranges.push(range);
+                   
                 }
                 return ctx.sync().then(function () {
 
                     for (var i = 0; i < ranges.length; i++) {
 
                         ranges[i].format.fill.clear();
-                        // ranges[i].format.borders.clear();
-
+                        
                         ranges[i].format.borders.getItem('EdgeBottom').style = 'None';
                         ranges[i].format.borders.getItem('EdgeLeft').style = 'None';
                         ranges[i].format.borders.getItem('EdgeRight').style = 'None';
@@ -260,6 +264,28 @@
             })
         }).catch(function (error) { //...
         });
+    }
+
+    function removeBindings() {
+
+        Excel.run(function (ctx) {
+
+            var bindings = ctx.workbook.bindings;
+            bindings.load('items');
+
+            return ctx.sync().then(function () {
+
+                for (var i = 0; i < bindings.items.length; i++) {
+
+                    bindings.items[i].delete();
+                }
+
+                return ctx.sync();
+            });
+
+        }).catch(function (error) { //...
+        });
+
     }
 
     function addControl() {
@@ -279,7 +305,7 @@
             return ctx.sync().then(function () {
 
                 Office.select('bindings#' + bindingId).addHandlerAsync(Office.EventType.BindingSelectionChanged, onBindingSelectionChanged);
-
+                $("#binding-label").html('BindingID: ' + guid);
             });
 
         }).catch(function (error) { //...
