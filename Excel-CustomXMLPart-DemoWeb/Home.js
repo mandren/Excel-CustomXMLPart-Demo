@@ -62,15 +62,31 @@
             var sheetName = "Sheet1";
             var rangeAddress = "A:Z";
             var range = ctx.workbook.worksheets.getItem(sheetName).getRange(rangeAddress);
-           
+
             var binding = ctx.workbook.bindings.add(range, 'Range', 'SheetBinding');
 
             return ctx.sync().then(function () {
 
                 Office.select('bindings#SheetBinding').addHandlerAsync(Office.EventType.BindingSelectionChanged, onSheetBindingSelectionChanged);
-                
-            });
 
+                var partCount = ctx.workbook.customXmlParts.getCount();
+
+                return ctx.sync().then(function () {
+
+                    if (partCount.value <= 0) {
+
+                        var parts = ctx.workbook.customXmlParts;
+                        parts.load();
+
+                        return ctx.sync().then(function () {
+                            var xmlData = '<?xml version="1.0"?><CommonToolsData xmlns="CommonTools"></CommonToolsData>';
+                            var part = parts.add(xmlData);
+                            part.load();
+                            return ctx.sync();
+                        });
+                    }
+                });
+            });
         }).catch(function (error) { //...
         });
     }
@@ -250,7 +266,7 @@
                         return ctx.sync().then(function () {
 
                             clearWorkbook();
-                            //removeBindings();
+                           // removeBindings();
 
                         });
                     });
@@ -312,8 +328,9 @@
             return ctx.sync().then(function () {
 
                 for (var i = 0; i < bindings.items.length; i++) {
-
-                    bindings.items[i].delete();
+                    if (bindings.items[i].id != "SheetBinding") {
+                        bindings.items[i].delete();
+                    }
                 }
 
                 return ctx.sync();
