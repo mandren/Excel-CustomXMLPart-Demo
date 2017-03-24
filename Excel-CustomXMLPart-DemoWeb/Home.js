@@ -47,9 +47,9 @@
             $('#serialize-button-desc').text("Serialize the control data into XML");
             $('#serialize-button').click(serializeData);
 
-            $('#add-control-button-text').text("Add Control");
-            $('#add-control-button-desc').text("Add new control to the workbook");
-            $('#add-control-button').click(addControl);
+            $('#add-binding-button-text').text("Add Binding");
+            $('#add-binding-button-desc').text("Add new binding to the workbook");
+            $('#add-binding-button').click(addControl);
 
             initializeWB();
         });
@@ -189,7 +189,7 @@
         var id = bArgs.binding.id.split("!")[1];
         var controlType = bArgs.binding.id.split("!")[0];
                 
-        $("#controlType-list").val(controlType);
+        $("#bindingType-list").val(controlType);
         $("#binding-label").html('BindingID: ' + id);
 
          //TODO: Flesh this out to add content to task pane
@@ -198,7 +198,7 @@
 
     function onSheetBindingSelectionChanged(bArgs) {
 
-        $("#controlType-list").val('green');
+        $("#bindingType-list").val('green');
         $("#binding-label").html('Empty Cell');
 
     }
@@ -345,7 +345,7 @@
 
         Excel.run(function (ctx) {
             
-            var controlType = $("#controlType-list option:selected").text();
+            var controlType = $("#bindingType-list option:selected").text();
             var guid = generateQuickGuid();
 
             var range = ctx.workbook.getSelectedRange();
